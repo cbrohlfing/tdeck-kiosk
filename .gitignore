@@ -1,0 +1,10 @@
+# PlatformIO
+.pio/
+.vscode/
+.build/
+
+# macOS
+.DS_Store
+
+# Logs
+*.log
