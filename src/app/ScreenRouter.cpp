@@ -1,4 +1,5 @@
 #include "ScreenRouter.h"
+
 #include "../lock/LockManager.h"
 #include "../hw/Display.h"
 #include "../hw/Input.h"
@@ -15,6 +16,16 @@ static const char* screenName(ScreenId s) {
     case ScreenId::AdminHome: return "AdminHome";
     default: return "Unknown";
   }
+}
+
+static bool split2(const String& s, char delim, String& left, String& right) {
+  int idx = s.indexOf(delim);
+  if (idx < 0) return false;
+  left = s.substring(0, idx);
+  right = s.substring(idx + 1);
+  left.trim();
+  right.trim();
+  return true;
 }
 
 void ScreenRouter::begin(LockManager* lock, Display* display, Input* input, MeshService* mesh, MessageStore* store) {
@@ -45,38 +56,61 @@ void ScreenRouter::go(ScreenId next) {
 void ScreenRouter::tick() {
   String line;
   if (in && in->pollLine(line)) {
+    line.trim();
     if (line.length() == 0) return;
     handleLine(line);
   }
 }
 
-static bool split2(const String& s, char delim, String& left, String& right) {
-  int idx = s.indexOf(delim);
-  if (idx < 0) return false;
-  left = s.substring(0, idx);
-  right = s.substring(idx + 1);
-  left.trim();
-  right.trim();
-  return true;
-}
-
-void ScreenRouter::handleLine(const String& line) {
+void ScreenRouter::handleLine(const String& lineIn) {
   if (!ui || !lockMgr) return;
 
-  // Global help
+  // Normalize once
+  String line = lineIn;
+  line.trim();
+
+  //
+  // GLOBAL COMMANDS (work from ANY screen, including Chat)
+  //
+
+  // help
   if (line == "help") {
     ui->line("Commands:");
     ui->line("  home | inbox | chat <peer> | send <peer> <msg> | rx <peer> <msg>");
+    ui->line("  mc <cmd>   (MeshCore CLI passthrough)");
     ui->line("  back");
     return;
   }
 
-  if (line == "home") { go(ScreenId::KidHome); return; }
-  if (line == "inbox") { go(ScreenId::Inbox); return; }
+  // navigation
+  if (line == "home")  { go(ScreenId::KidHome); return; }
+  if (line == "inbox") { go(ScreenId::Inbox);   return; }
 
   if (line == "back") {
     if (lockMgr->isKidMode()) go(ScreenId::KidHome);
     else go(ScreenId::AdminHome);
+    return;
+  }
+
+  // mc <cmd> (passthrough)
+  if (line.startsWith("mc ")) {
+    String cmd = line.substring(3);
+    cmd.trim();
+    if (cmd.length() == 0) {
+      ui->line("Usage: mc <cmd>");
+      return;
+    }
+    if (!meshSvc) {
+      ui->line("Mesh not ready");
+      return;
+    }
+    String out;
+    bool ok = meshSvc->backendCli(cmd, &out);
+    if (ok) {
+      if (out.length() > 0) ui->line(out);
+    } else {
+      ui->line("MeshCore CLI rejected command.");
+    }
     return;
   }
 
@@ -105,16 +139,16 @@ void ScreenRouter::handleLine(const String& line) {
     if (ok && msgStore) {
       Message m{peer, msg, false, millis()};
       msgStore->add(m);
-      ui->line("✅ Sent.");
+      ui->line("[ok] sent");
       activePeer = peer;
       go(ScreenId::Chat);
     } else {
-      ui->line("❌ Send failed.");
+      ui->line("[err] send failed");
     }
     return;
   }
 
-  // rx <peer> <msg>  (simulate inbound)
+  // rx <peer> <msg>  (simulate inbound) - WORKS FROM ANY SCREEN
   if (line.startsWith("rx ")) {
     String rest = line.substring(3);
     rest.trim();
@@ -123,16 +157,35 @@ void ScreenRouter::handleLine(const String& line) {
       ui->line("Usage: rx <peer> <message>");
       return;
     }
-    if (meshSvc) meshSvc->injectInbound(peer, msg);
-    ui->line("📥 Inbound injected.");
+
+    // Always record inbound in the store so Inbox/Chat reflect it immediately.
+    if (msgStore) {
+      msgStore->add(Message{peer, msg, true, millis()});
+    }
+
+    // Also notify the mesh backend (if it wants to simulate callbacks, etc.)
+    if (meshSvc) {
+      meshSvc->injectInbound(peer, msg);
+    }
+
+    ui->line("Inbound injected.");
+
+    // If we're looking at Inbox or the same peer chat, refresh the view.
+    if (current == ScreenId::Inbox) {
+      render();
+    } else if (current == ScreenId::Chat && activePeer == peer) {
+      render();
+    }
     return;
   }
 
-  // Per-screen controls
+  //
+  // PER-SCREEN CONTROLS
+  //
   switch (current) {
     case ScreenId::KidHome:
       if (line == "a") go(ScreenId::Unlock);
-      else ui->line("Try: inbox | chat <peer> | send <peer> <msg> | a | help");
+      else ui->line("Try: inbox | chat <peer> | send <peer> <msg> | rx <peer> <msg> | a | help");
       break;
 
     case ScreenId::Inbox:
@@ -144,14 +197,16 @@ void ScreenRouter::handleLine(const String& line) {
       break;
 
     case ScreenId::Chat:
-      // In chat screen: typing sends to active peer
+      // In chat screen: typing sends to active peer (global commands already handled above)
       if (activePeer.length() == 0) { ui->line("No active peer. Use: chat <peer>"); return; }
       if (meshSvc && msgStore) {
         bool ok = meshSvc->send(activePeer, line);
         if (ok) {
           msgStore->add(Message{activePeer, line, false, millis()});
           render();
-        } else ui->line("❌ Send failed.");
+        } else {
+          ui->line("[err] send failed");
+        }
       }
       break;
 
@@ -160,7 +215,7 @@ void ScreenRouter::handleLine(const String& line) {
       if (line == "x") { go(ScreenId::KidHome); return; }
 
       if (lockMgr->verifyPin(line)) {
-        ui->line("✅ Unlocked. Welcome, Admin.");
+        ui->line("[ok] unlocked");
         go(ScreenId::AdminHome);
       } else {
         unlockError = true;
@@ -173,10 +228,10 @@ void ScreenRouter::handleLine(const String& line) {
       else if (line.startsWith("setpin ")) {
         String p = line.substring(7);
         p.trim();
-        if (lockMgr->setPin(p)) ui->line("✅ PIN updated.");
-        else ui->line("❌ Invalid PIN. Use 4-6 digits.");
+        if (lockMgr->setPin(p)) ui->line("[ok] PIN updated");
+        else ui->line("[err] invalid PIN (use 4-6 digits)");
       }
-      else if (line == "kiddefault on") { lockMgr->setKidDefault(true); ui->line("Kid default ON"); }
+      else if (line == "kiddefault on")  { lockMgr->setKidDefault(true);  ui->line("Kid default ON"); }
       else if (line == "kiddefault off") { lockMgr->setKidDefault(false); ui->line("Kid default OFF"); }
       else ui->line("Try: k | setpin 5555 | kiddefault on/off | help");
       break;
@@ -228,6 +283,7 @@ void ScreenRouter::render() {
       ui->line("  chat bob");
       ui->line("  send bob hi there");
       ui->line("  rx bob hi (simulate inbound)");
+      ui->line("  mc help");
       ui->line("  a (admin unlock)");
       ui->line("  help");
       break;
@@ -249,7 +305,7 @@ void ScreenRouter::render() {
         ui->line("LOCKED OUT. Wait " + String(lockMgr->lockoutRemainingSeconds()) + "s.");
         ui->line("Type: back");
       } else {
-        if (unlockError) ui->line("❌ Wrong PIN. Try again.");
+        if (unlockError) ui->line("[err] wrong PIN");
         ui->line("Enter PIN (4-6 digits) then Enter.");
         ui->line("Commands:");
         ui->line("  [x] Cancel");

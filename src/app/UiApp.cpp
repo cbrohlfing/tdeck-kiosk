@@ -1,51 +1,42 @@
 #include "UiApp.h"
 
-#include "ScreenRouter.h"
-#include "../lock/LockManager.h"
+#include "../app/ScreenRouter.h"
 #include "../hw/SerialDisplay.h"
 #include "../hw/SerialInput.h"
+#include "../lock/LockManager.h"
+#include "../model/MessageStore.h"
 
 #include "../mesh/MeshService.h"
 #include "../mesh/FakeMeshService.h"
 #include "../mesh/MeshCoreMeshService.h"
+#include "../mesh/MeshMuxService.h"
 
-#include "../model/MessageStore.h"
-#include "../model/Message.h"
-
-static LockManager lockMgr;
-static ScreenRouter router;
+// Concrete hardware implementations (Serial-based for now)
 static SerialDisplay display;
 static SerialInput input;
+
+// App state
+static LockManager lockMgr;
 static MessageStore store;
+static ScreenRouter router;
 
-#ifndef USE_MESHCORE
-  #define USE_MESHCORE 0
-#endif
+// Mesh backends
+static FakeMeshService fakeMesh;
+static MeshCoreMeshService meshCoreStub;
 
-#if USE_MESHCORE
-static MeshCoreMeshService mesh;
-#else
-static FakeMeshService mesh;
-#endif
+// Mux: chat uses FakeMesh; mc CLI uses MeshCore stub
+static MeshMuxService mux(&fakeMesh, &meshCoreStub);
+
+// Single mesh pointer used by the app/router
+static MeshService* mesh = &mux;
 
 void UiApp::begin() {
-  lockMgr.begin();
-
-  mesh.onInbound([](const String& peer, const String& text) {
-    Message m;
-    m.peer = peer;
-    m.text = text;
-    m.inbound = true;
-    m.tsMs = millis();
-    store.add(m);
-  });
-
-  mesh.begin();
-
-  router.begin(&lockMgr, &display, &input, &mesh, &store);
+  mesh->begin();
+  router.begin(&lockMgr, &display, &input, mesh, &store);
+  display.line("[boot] UiApp ready");
 }
 
 void UiApp::loop() {
-  mesh.tick();
+  mesh->tick();
   router.tick();
 }
