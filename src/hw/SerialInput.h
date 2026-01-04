@@ -1,26 +1,14 @@
 #pragma once
+
+#include <Arduino.h>
 #include "Input.h"
 
 class SerialInput : public Input {
-public:
-  bool pollLine(String& outLine) override {
-    while (Serial.available() > 0) {
-      char c = (char)Serial.read();
-      if (c == '\r') continue;
+ public:
+  SerialInput();
 
-      if (c == '\n') {
-        outLine = buffer;
-        buffer = "";
-        outLine.trim();
-        return true;
-      }
+  bool pollLine(String& outLine) override;
 
-      // Basic sanity: avoid huge lines
-      if (buffer.length() < 64) buffer += c;
-    }
-    return false;
-  }
-
-private:
+ private:
   String buffer;
 };
