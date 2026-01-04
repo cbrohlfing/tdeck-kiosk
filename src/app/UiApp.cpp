@@ -15,9 +15,10 @@
 #if defined(HW_HELTEC_V3)
   #include "../hw/OledDisplayHeltecV3.h"
   #include "../hw/BatteryMonitor.h"
+  #include "../hw/PowerButtonHeltecV3.h"
 #endif
 
-// Concrete hardware implementations
+// Concrete hardware implementations (Serial-based for now)
 static SerialDisplay serialDisplay;
 static SerialInput input;
 
@@ -26,7 +27,10 @@ static SerialInput input;
   static BatteryMonitor battery;
   static OledDisplayHeltecV3 oled;
   static MultiDisplay display(&serialDisplay, &oled);
+
+  static PowerButtonHeltecV3 powerBtn;
 #else
+  // Default: serial-only display
   static Display& display = serialDisplay;
 #endif
 
@@ -48,6 +52,9 @@ void UiApp::begin() {
 #if defined(HW_HELTEC_V3)
   battery.begin();
   oled.begin(&battery);
+
+  // Long-press BOOT button to deep sleep
+  powerBtn.begin(&display);
 #endif
 
   router.begin(&lockMgr, &display, &input, mesh, &store);
@@ -58,7 +65,7 @@ void UiApp::begin() {
 void UiApp::loop() {
 #if defined(HW_HELTEC_V3)
   battery.tick();
-  oled.tick();   // <-- critical: refresh OLED top bar periodically
+  powerBtn.tick();
 #endif
 
   mesh->tick();
