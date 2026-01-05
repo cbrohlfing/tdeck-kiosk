@@ -1,7 +1,7 @@
 #pragma once
 #include <Arduino.h>
 
-#include "Display.h"
+#include "../../hw/Display.h"
 #include "BatteryMonitor.h"
 
 #include <Wire.h>
