@@ -1,8 +1,11 @@
 #include "UiApp.h"
 
 #include "../app/ScreenRouter.h"
-#include "../hw/SerialDisplay.h"
-#include "../hw/SerialInput.h"
+#include "../hw/Display.h"
+#include "../hw/Input.h"
+#include "../hw/BoardFactory.h"
+#include "../hw/BoardServices.h"
+
 #include "../lock/LockManager.h"
 #include "../model/MessageStore.h"
 
@@ -10,28 +13,10 @@
 #include "../mesh/FakeMeshService.h"
 #include "../mesh/MeshCoreMeshService.h"
 
-#include "../hw/MultiDisplay.h"
-
+// Only needed so we can call ->tick() on these types
 #if defined(HW_HELTEC_V3)
-  #include "../hw/OledDisplayHeltecV3.h"
   #include "../hw/BatteryMonitor.h"
   #include "../hw/PowerButtonHeltecV3.h"
-#endif
-
-// Concrete hardware implementations (Serial-based for now)
-static SerialDisplay serialDisplay;
-static SerialInput input;
-
-// Optional Heltec OLED + battery
-#if defined(HW_HELTEC_V3)
-  static BatteryMonitor battery;
-  static OledDisplayHeltecV3 oled;
-  static MultiDisplay display(&serialDisplay, &oled);
-
-  static PowerButtonHeltecV3 powerBtn;
-#else
-  // Default: serial-only display
-  static Display& display = serialDisplay;
 #endif
 
 // App state
@@ -39,33 +24,30 @@ static LockManager lockMgr;
 static MessageStore store;
 static ScreenRouter router;
 
-// Mesh backends
+// Mesh backends (still using FakeMesh by default)
 static FakeMeshService fakeMesh;
 static MeshCoreMeshService meshCoreStub;
-
-// Select which backend to use.
 static MeshService* mesh = &fakeMesh;
+
+// Board services (display/input/battery/power etc.)
+static BoardServices hw;
 
 void UiApp::begin() {
   mesh->begin();
 
-#if defined(HW_HELTEC_V3)
-  battery.begin();
-  oled.begin(&battery);
+  // Initialize board-specific services (display/input/etc)
+  hw = BoardFactory::begin();
 
-  // Long-press BOOT button to deep sleep
-  powerBtn.begin(&display);
-#endif
+  // Router uses display + input
+  router.begin(&lockMgr, hw.display, hw.input, mesh, &store);
 
-  router.begin(&lockMgr, &display, &input, mesh, &store);
-
-  display.line("[boot] UiApp ready");
+  if (hw.display) hw.display->line("[boot] UiApp ready");
 }
 
 void UiApp::loop() {
 #if defined(HW_HELTEC_V3)
-  battery.tick();
-  powerBtn.tick();
+  if (hw.battery) hw.battery->tick();
+  if (hw.powerButton) hw.powerButton->tick();
 #endif
 
   mesh->tick();
