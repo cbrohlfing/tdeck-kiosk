@@ -1,87 +1,54 @@
----
-
-### ✅ **Final `.github/pull_request_template.md`**
-
-```md
 ## Summary
-Brief description of what this PR adds or changes.
+What does this PR change and why?
 
-- Feature / Fix:
+- Feature / Refactor / Fix:
 - Board(s) affected:
-  - [ ] Heltec V3
-  - [ ] T-Deck (future)
-  - [ ] Board-agnostic
+  - Heltec V3
+  - T-Deck (future)
+  - Board-agnostic
 
 ---
 
-## Type of change
+## Scope
 (check all that apply)
 
+- [ ] Refactor only (no functional change)
 - [ ] New feature
 - [ ] Bug fix
-- [ ] Refactor (no functional change)
-- [ ] Hardware abstraction / board support
-- [ ] Docs / comments only
+- [ ] Hardware / board abstraction
+- [ ] Docs / tooling only
 - [ ] Breaking change
 
 ---
 
-## Testing
-
-### Smoke Test
-I ran **SMOKE_TEST.md** on real hardware:
+## Testing (required)
+Smoke test status:
 
 - [ ] `pio run -t clean`
+- [ ] `pio run`
 - [ ] `pio run -t upload`
-- [ ] Device boots successfully
-- [ ] OLED displays content (if applicable)
-- [ ] Battery voltage behaves correctly (if applicable)
-- [ ] Charging detection behaves correctly (if applicable)
+- [ ] Device boots
 - [ ] CLI works
-- [ ] Power / sleep behavior works (if applicable)
 
-**Board tested:**
+Board tested:
 - [ ] Heltec WiFi LoRa 32 V3
+- [ ] Other (explain)
 
-**Power modes tested:**
-- [ ] USB only
-- [ ] Battery only
+Power mode tested:
+- [ ] USB
+- [ ] Battery
 - [ ] USB + Battery
+- [ ] Not applicable
 
 ---
 
-## Behavior Verification
+## Verification
 - [ ] No boot loops
-- [ ] No crashes or watchdog resets
-- [ ] No regression in previously working features
+- [ ] No crashes / watchdog resets
+- [ ] No regression in existing features
 
 ---
 
-## Code Quality
-- [ ] Implemented on a feature branch
-- [ ] Board-specific code isolated under `hw/`
-- [ ] No debug-only logging left behind
-- [ ] No commented-out code unless intentional
-- [ ] Naming follows project conventions
-
----
-
-## Docs
-- [ ] SMOKE_TEST.md updated (if needed)
-- [ ] README or comments updated (if needed)
-
----
-
-## Merge Plan
-- [ ] Squash & merge into `main`
-- [ ] Feature branch can be deleted after merge
-- [ ] Release tag will be created after merge (if applicable)
-
----
-
-## Notes / Follow-ups
-(Optional)
-
-- Known limitations:
-- Future cleanup:
-- Related issues:
+## Merge Checklist
+- [ ] PR is ready to squash & merge
+- [ ] Feature branch can be deleted
