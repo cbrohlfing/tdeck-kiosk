@@ -2,7 +2,7 @@
 
 Fast manual validation checklist to run **before merging any feature branch** into `main`.
 
-Goal: catch regressions in core behaviors (boot, display, input, power) in under 2 minutes.
+Goal: catch regressions in core behaviors (boot, display, input, power) in under ~2 minutes.
 
 ---
 
