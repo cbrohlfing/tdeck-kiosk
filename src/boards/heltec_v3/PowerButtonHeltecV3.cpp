@@ -1,6 +1,6 @@
 #include "PowerButtonHeltecV3.h"
 
-#include "Display.h"
+#include "../../hw/Display.h"
 #include <esp_sleep.h>
 
 static void logLine(Display* display, const String& s) {

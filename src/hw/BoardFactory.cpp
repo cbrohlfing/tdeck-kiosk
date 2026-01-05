@@ -6,9 +6,9 @@
 #include "SerialInput.h"
 
 #if defined(HW_HELTEC_V3)
-  #include "BatteryMonitor.h"
-  #include "OledDisplayHeltecV3.h"
-  #include "PowerButtonHeltecV3.h"
+  #include "../boards/heltec_v3/BatteryMonitor.h"
+  #include "../boards/heltec_v3/OledDisplayHeltecV3.h"
+  #include "../boards/heltec_v3/PowerButtonHeltecV3.h"
   #include "MultiDisplay.h"
 #endif
 
