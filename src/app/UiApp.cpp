@@ -13,12 +13,6 @@
 #include "../mesh/FakeMeshService.h"
 #include "../mesh/MeshCoreMeshService.h"
 
-// Only needed so we can call ->tick() on these types
-#if defined(HW_HELTEC_V3)
-  #include "../hw/BatteryMonitor.h"
-  #include "../hw/PowerButtonHeltecV3.h"
-#endif
-
 // App state
 static LockManager lockMgr;
 static MessageStore store;
@@ -45,10 +39,8 @@ void UiApp::begin() {
 }
 
 void UiApp::loop() {
-#if defined(HW_HELTEC_V3)
-  if (hw.battery) hw.battery->tick();
-  if (hw.powerButton) hw.powerButton->tick();
-#endif
+  // Let the board layer tick board-specific services
+  BoardFactory::tick(hw);
 
   mesh->tick();
   router.tick();

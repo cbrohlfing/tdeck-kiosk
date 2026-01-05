@@ -1,55 +1,56 @@
 #include "BoardFactory.h"
 
-#include "BoardServices.h"
-
 #include "Display.h"
 #include "Input.h"
 #include "SerialDisplay.h"
 #include "SerialInput.h"
 
 #if defined(HW_HELTEC_V3)
-  #include "MultiDisplay.h"
-  #include "OledDisplayHeltecV3.h"
   #include "BatteryMonitor.h"
+  #include "OledDisplayHeltecV3.h"
   #include "PowerButtonHeltecV3.h"
+  #include "MultiDisplay.h"
 #endif
 
-// ----- Concrete singletons for this firmware build -----
+// --- Shared concrete instances (static lifetime) ---
 static SerialDisplay gSerialDisplay;
 static SerialInput gSerialInput;
 
 #if defined(HW_HELTEC_V3)
-  static BatteryMonitor gBattery;
-  static OledDisplayHeltecV3 gOled;
-  static MultiDisplay gDisplay(&gSerialDisplay, &gOled);
-  static PowerButtonHeltecV3 gPowerButton;
+static BatteryMonitor gBattery;
+static OledDisplayHeltecV3 gOled;
+static PowerButtonHeltecV3 gPowerButton;
+static MultiDisplay gDisplay(&gSerialDisplay, &gOled);
 #else
-  // Non-Heltec builds: serial-only for now
-  static Display& gDisplay = gSerialDisplay;
+static Display& gDisplay = gSerialDisplay;
 #endif
 
 BoardServices BoardFactory::begin() {
-  BoardServices s;
+  BoardServices hw;
+  hw.display = &gDisplay;
+  hw.input = &gSerialInput;
 
 #if defined(HW_HELTEC_V3)
   gBattery.begin();
   gOled.begin(&gBattery);
+  gPowerButton.begin(hw.display);
 
-  s.display = &gDisplay;
-  s.input = &gSerialInput;
-  s.battery = &gBattery;
+  hw.battery = &gBattery;
+  hw.powerButton = &gPowerButton;
 
-  // NOTE: We pass the same display pointer so power logs go to both serial + OLED.
-  gPowerButton.begin(s.display);
-  s.powerButton = &gPowerButton;
-
-  if (s.display) s.display->line("[boot] BoardFactory: Heltec V3 init ok");
+  if (hw.display) hw.display->line("[boot] BoardFactory: Heltec V3 init ok");
 #else
-  s.display = &gSerialDisplay;
-  s.input = &gSerialInput;
-
-  if (s.display) s.display->line("[boot] BoardFactory: Serial-only init ok");
+  if (hw.display) hw.display->line("[boot] BoardFactory: Serial-only init ok");
 #endif
 
-  return s;
+  return hw;
+}
+
+void BoardFactory::tick(BoardServices& hw) {
+#if defined(HW_HELTEC_V3)
+  if (hw.battery) hw.battery->tick();
+  if (hw.powerButton) hw.powerButton->tick();
+#else
+  (void)hw;
+#endif
 }
