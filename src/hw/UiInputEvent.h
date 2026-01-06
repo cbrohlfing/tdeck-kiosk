@@ -1,8 +1,9 @@
+// /src/hw/UiInputEvent.h
 #pragma once
+#include <stdint.h>
 
-enum class UiInputEvent {
-  NONE = 0,
-  NEXT,     // short press (scroll / move selection down)
-  SELECT,   // long press (activate)
-  BACK      // reserved for later (e.g., trackball click+hold, extra button, etc.)
+enum class UiInputEvent : uint8_t {
+  None = 0,
+  Next,     // short press
+  Select,   // long press
 };
