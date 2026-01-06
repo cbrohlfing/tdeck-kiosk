@@ -1,9 +1,11 @@
+// /src/hw/BoardFactory.cpp
 #include "BoardFactory.h"
 
 #include "Display.h"
 #include "Input.h"
 #include "SerialDisplay.h"
 #include "SerialInput.h"
+#include "UiInput.h"
 
 #if defined(HW_HELTEC_V3)
   #include "../boards/heltec_v3/BatteryMonitor.h"
@@ -15,6 +17,7 @@
 // --- Shared concrete instances (static lifetime) ---
 static SerialDisplay gSerialDisplay;
 static SerialInput gSerialInput;
+static UiInput gUiInput;
 
 #if defined(HW_HELTEC_V3)
 static BatteryMonitor gBattery;
@@ -29,11 +32,12 @@ BoardServices BoardFactory::begin() {
   BoardServices hw;
   hw.display = &gDisplay;
   hw.input = &gSerialInput;
+  hw.uiInput = &gUiInput;
 
 #if defined(HW_HELTEC_V3)
   gBattery.begin();
   gOled.begin(&gBattery);
-  gPowerButton.begin(hw.display);
+  gPowerButton.begin(hw.display, hw.uiInput);
 
   hw.battery = &gBattery;
   hw.powerButton = &gPowerButton;

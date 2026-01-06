@@ -1,8 +1,10 @@
+// /src/app/UiApp.cpp
 #include "UiApp.h"
 
 #include "../app/ScreenRouter.h"
 #include "../hw/Display.h"
 #include "../hw/Input.h"
+#include "../hw/UiInput.h"
 #include "../hw/BoardFactory.h"
 #include "../hw/BoardServices.h"
 
@@ -32,8 +34,8 @@ void UiApp::begin() {
   // Initialize board-specific services (display/input/etc)
   hw = BoardFactory::begin();
 
-  // Router uses display + input
-  router.begin(&lockMgr, hw.display, hw.input, mesh, &store);
+  // Router uses display + input + uiInput
+  router.begin(&lockMgr, hw.display, hw.input, hw.uiInput, mesh, &store);
 
   if (hw.display) hw.display->line("[boot] UiApp ready");
 }

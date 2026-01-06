@@ -1,6 +1,10 @@
+// /src/boards/heltec_v3/PowerButtonHeltecV3.cpp
 #include "PowerButtonHeltecV3.h"
 
 #include "../../hw/Display.h"
+#include "../../hw/UiInput.h"
+#include "../../hw/UiInputEvent.h"
+
 #include <esp_sleep.h>
 
 static void logLine(Display* display, const String& s) {
@@ -15,8 +19,9 @@ bool PowerButtonHeltecV3::rawPressed() const {
   return digitalRead(BTN_PIN) == LOW;
 }
 
-void PowerButtonHeltecV3::begin(Display* display) {
+void PowerButtonHeltecV3::begin(Display* display, UiInput* uiInput) {
   _display = display;
+  _uiInput = uiInput;
 
   pinMode(BTN_PIN, INPUT_PULLUP);
 
@@ -25,8 +30,8 @@ void PowerButtonHeltecV3::begin(Display* display) {
   _lastChangeMs = millis();
 
   _pressStartMs = _stablePressed ? millis() : 0;
-  _armed = false;
-  _aborted = false;
+  _sleepArmed = false;
+  _sleepAborted = false;
   _lastReportMs = 0;
 }
 
@@ -43,50 +48,66 @@ void PowerButtonHeltecV3::tick() {
   // When stable long enough, accept the new state
   if ((now - _lastChangeMs) >= DEBOUNCE_MS) {
     if (raw != _stablePressed) {
-      const bool wasArmed = _armed;
-      const bool wasAborted = _aborted;
+      const bool wasSleepArmed = _sleepArmed;
+      const bool wasSleepAborted = _sleepAborted;
+      const uint32_t pressStart = _pressStartMs;
 
       _stablePressed = raw;
 
       if (_stablePressed) {
         // pressed
         _pressStartMs = now;
-        _armed = false;
-        _aborted = false;
+        _sleepArmed = false;
+        _sleepAborted = false;
         _lastReportMs = 0;
       } else {
         // released
-        if (wasArmed && !wasAborted) {
+        const uint32_t heldMs = (pressStart == 0) ? 0 : (now - pressStart);
+
+        // If sleep was armed and not aborted, go to deep sleep.
+        if (wasSleepArmed && !wasSleepAborted) {
           logLine(_display, "[pwr] release detected -> deep sleep");
           logLine(_display, "[pwr] entering deep sleep now");
           goToDeepSleep();
           return;
         }
 
-        if (wasArmed && wasAborted) {
+        // If sleep was armed but then aborted, just report cancellation.
+        if (wasSleepArmed && wasSleepAborted) {
           logLine(_display, "[pwr] sleep canceled");
+        } else {
+          // Not a sleep action: treat as UI input (Next/Select).
+          if (_uiInput) {
+            if (heldMs >= SELECT_PRESS_MS) {
+              _uiInput->post(UiInputEvent::Select);
+              if (_display) _display->line("[ui] Select");
+            } else if (heldMs > 0) {
+              _uiInput->post(UiInputEvent::Next);
+              if (_display) _display->line("[ui] Next");
+            }
+          }
         }
 
         // Reset state
         _pressStartMs = 0;
-        _armed = false;
-        _aborted = false;
+        _sleepArmed = false;
+        _sleepAborted = false;
         _lastReportMs = 0;
       }
     }
   }
 
-  // --- Long-press window logic ---
+  // --- Sleep arming logic (very long press) ---
   if (!_stablePressed || _pressStartMs == 0) return;
 
   const uint32_t heldMs = now - _pressStartMs;
 
-  // Arm once we hit the long press threshold
-  if (!_armed && heldMs >= LONG_PRESS_MS) {
-    _armed = true;
-    _aborted = false;
+  // Arm once we hit the deep sleep threshold
+  if (!_sleepArmed && heldMs >= SLEEP_ARM_MS) {
+    _sleepArmed = true;
+    _sleepAborted = false;
 
-    logLine(_display, "[pwr] long press -> deep sleep");
+    logLine(_display, "[pwr] very long press -> deep sleep");
     logLine(_display, "[pwr] release to sleep");
 
     // Set to "now" so we don't immediately print a reminder on normal holds
@@ -94,16 +115,15 @@ void PowerButtonHeltecV3::tick() {
   }
 
   // Abort if held too long AFTER arming
-  if (_armed && !_aborted && heldMs >= (LONG_PRESS_MS + TOO_LONG_MS)) {
-    _aborted = true;
+  if (_sleepArmed && !_sleepAborted && heldMs >= (SLEEP_ARM_MS + TOO_LONG_MS)) {
+    _sleepAborted = true;
     logLine(_display, "[pwr] held too long; abort sleep");
   }
 
   // Optional periodic reminder while armed (less spammy)
-  // Increase interval so normal holds usually won't hit it.
   static constexpr uint32_t REMIND_MS = 2500;
 
-  if (_armed && !_aborted && (now - _lastReportMs) > REMIND_MS) {
+  if (_sleepArmed && !_sleepAborted && (now - _lastReportMs) > REMIND_MS) {
     _lastReportMs = now;
     logLine(_display, "[pwr] release to sleep");
   }
