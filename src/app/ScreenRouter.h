@@ -29,7 +29,6 @@ public:
   void tick();
 
 private:
-  // Services
   LockManager* lockMgr = nullptr;
   Display* ui = nullptr;
   Input* in = nullptr;
@@ -37,31 +36,29 @@ private:
   MeshService* meshSvc = nullptr;
   MessageStore* msgStore = nullptr;
 
-  // State
   ScreenId current = ScreenId::KidHome;
   bool unlockError = false;
   String activePeer;
 
-  // Button-driven UI state
-  uint16_t cursor = 0;   // selected item index
-  uint16_t page = 0;     // page index for paged views (chat)
-  uint16_t listTop = 0;  // top index of visible window in list views
+  uint16_t cursor = 0;
+  uint16_t page = 0;
+  uint16_t listTop = 0;
 
   void go(ScreenId next);
 
-  // Serial/CLI input
   void handleLine(const String& lineIn);
 
-  // Button UI input
-  void handleUiEvent(uint8_t e); // UiInputEvent as uint8_t to keep header light
-  void uiNext();
-  void uiSelect();
+  void handleUiEvent(uint8_t e);
 
-  // Render helpers
+  void uiNext();
+  void uiPrev();
+  void uiSelect();
+  void uiBack();
+  void uiHome();
+
   void render();
   void renderInbox();
   void renderChat(const String& peer);
 
-  // Helpers
   void resetUiState() { cursor = 0; page = 0; listTop = 0; }
 };
