@@ -10,12 +10,10 @@
 #include "../model/MessageStore.h"
 #include "../model/Message.h"
 
-// Your OLED is only showing the last ~4 lines right now, so design for 4 lines.
 static constexpr uint8_t kDisplayLines = 4;
 static constexpr uint8_t kHeaderLines  = 1;
-static constexpr uint8_t kBodyLines    = (kDisplayLines - kHeaderLines); // = 3
+static constexpr uint8_t kBodyLines    = (kDisplayLines - kHeaderLines);
 
-// Chat: with 4-line display, we can show header + 2 messages + 1 status
 static constexpr uint8_t kChatMsgLinesPerPage = 2;
 
 static const char* screenName(ScreenId s) {
@@ -49,12 +47,11 @@ static void clampListWindow(uint16_t totalItems, uint16_t& cursor, uint16_t& top
   if (cursor >= totalItems) cursor = 0;
 
   if (cursor < top) top = cursor;
-  const uint16_t window = kBodyLines; // number of visible rows
+  const uint16_t window = kBodyLines;
   if (cursor >= (uint16_t)(top + window)) {
     top = cursor - (window - 1);
   }
 
-  // Keep top in range
   if (top >= totalItems) top = 0;
 }
 
@@ -77,7 +74,6 @@ void ScreenRouter::begin(LockManager* lock,
 }
 
 void ScreenRouter::go(ScreenId next) {
-  // Enforce Kid Mode route gating
   if (lockMgr && lockMgr->isKidMode()) {
     if (!(next == ScreenId::KidHome || next == ScreenId::Inbox || next == ScreenId::Chat || next == ScreenId::Unlock)) {
       if (ui) ui->line("[router] Blocked");
@@ -92,7 +88,6 @@ void ScreenRouter::go(ScreenId next) {
 }
 
 void ScreenRouter::tick() {
-  // 1) Button events (Next/Select)
   if (uiIn) {
     UiInputEvent e;
     while (uiIn->take(e)) {
@@ -100,7 +95,6 @@ void ScreenRouter::tick() {
     }
   }
 
-  // 2) Serial line input (existing workflow)
   String line;
   if (in && in->pollLine(line)) {
     line.trim();
@@ -113,8 +107,11 @@ void ScreenRouter::handleUiEvent(uint8_t eRaw) {
   UiInputEvent e = (UiInputEvent)eRaw;
 
   switch (e) {
-    case UiInputEvent::Next:   uiNext();   break;
-    case UiInputEvent::Select: uiSelect(); break;
+    case UiInputEvent::NavNext: uiNext();   break;
+    case UiInputEvent::NavPrev: uiPrev();   break;
+    case UiInputEvent::Select:  uiSelect(); break;
+    case UiInputEvent::Back:    uiBack();   break;
+    case UiInputEvent::Home:    uiHome();   break;
     default: break;
   }
 }
@@ -124,20 +121,17 @@ void ScreenRouter::uiNext() {
 
   switch (current) {
     case ScreenId::KidHome: {
-      // 3 items: Inbox, Chat, Unlock
       cursor = (cursor + 1) % 3;
       render();
       break;
     }
 
     case ScreenId::Inbox: {
-      // peers + "Home"
       uint16_t peersCount = 0;
       if (msgStore) peersCount = (uint16_t)msgStore->peersMostRecentFirst().size();
-      const uint16_t total = peersCount + 1; // +1 for Home row
+      const uint16_t total = peersCount + 1;
 
-      if (total == 0) { render(); return; }
-      cursor = (cursor + 1) % total;
+      cursor = (total == 0) ? 0 : (uint16_t)((cursor + 1) % total);
       clampListWindow(total, cursor, listTop);
       render();
       break;
@@ -158,13 +152,60 @@ void ScreenRouter::uiNext() {
     }
 
     case ScreenId::Unlock: {
-      // Nothing to "next" here in button-only; keep it simple
       render();
       break;
     }
 
     case ScreenId::AdminHome: {
-      // 2 items: Lock to Kid, Inbox
+      cursor = (cursor + 1) % 2;
+      render();
+      break;
+    }
+  }
+}
+
+void ScreenRouter::uiPrev() {
+  if (!ui || !lockMgr) return;
+
+  switch (current) {
+    case ScreenId::KidHome: {
+      cursor = (cursor + 2) % 3;
+      render();
+      break;
+    }
+
+    case ScreenId::Inbox: {
+      uint16_t peersCount = 0;
+      if (msgStore) peersCount = (uint16_t)msgStore->peersMostRecentFirst().size();
+      const uint16_t total = peersCount + 1;
+
+      if (total == 0) { cursor = 0; listTop = 0; render(); return; }
+      cursor = (cursor == 0) ? (uint16_t)(total - 1) : (uint16_t)(cursor - 1);
+      clampListWindow(total, cursor, listTop);
+      render();
+      break;
+    }
+
+    case ScreenId::Chat: {
+      if (!msgStore || activePeer.length() == 0) { render(); return; }
+      auto msgs = msgStore->messagesFor(activePeer);
+      uint16_t total = (uint16_t)msgs.size();
+      if (total == 0) { render(); return; }
+
+      uint16_t pages = (total + kChatMsgLinesPerPage - 1) / kChatMsgLinesPerPage;
+      if (pages == 0) pages = 1;
+
+      page = (page == 0) ? (uint16_t)(pages - 1) : (uint16_t)(page - 1);
+      render();
+      break;
+    }
+
+    case ScreenId::Unlock: {
+      render();
+      break;
+    }
+
+    case ScreenId::AdminHome: {
       cursor = (cursor + 1) % 2;
       render();
       break;
@@ -177,11 +218,9 @@ void ScreenRouter::uiSelect() {
 
   switch (current) {
     case ScreenId::KidHome: {
-      // 0 Inbox, 1 Chat, 2 Unlock
       if (cursor == 0) { go(ScreenId::Inbox); return; }
 
       if (cursor == 1) {
-        // open most recent peer if possible, else go inbox
         if (msgStore) {
           auto peers = msgStore->peersMostRecentFirst();
           if (!peers.empty()) {
@@ -203,7 +242,7 @@ void ScreenRouter::uiSelect() {
 
       auto peers = msgStore->peersMostRecentFirst();
       const uint16_t peersCount = (uint16_t)peers.size();
-      const uint16_t homeIndex = peersCount; // last row
+      const uint16_t homeIndex = peersCount;
 
       if (cursor == homeIndex) {
         go(ScreenId::KidHome);
@@ -211,7 +250,6 @@ void ScreenRouter::uiSelect() {
       }
 
       if (peersCount == 0) {
-        // Only "Home" exists
         go(ScreenId::KidHome);
         return;
       }
@@ -223,19 +261,16 @@ void ScreenRouter::uiSelect() {
     }
 
     case ScreenId::Chat: {
-      // Select = back to Inbox
       go(ScreenId::Inbox);
       return;
     }
 
     case ScreenId::Unlock: {
-      // Select = cancel (back to KidHome)
       go(ScreenId::KidHome);
       return;
     }
 
     case ScreenId::AdminHome: {
-      // 0 Lock to Kid, 1 Inbox
       if (cursor == 0) {
         lockMgr->lockToKid();
         go(ScreenId::KidHome);
@@ -250,13 +285,42 @@ void ScreenRouter::uiSelect() {
   }
 }
 
+void ScreenRouter::uiBack() {
+  if (!lockMgr) return;
+
+  switch (current) {
+    case ScreenId::KidHome:
+      return;
+
+    case ScreenId::Inbox:
+      if (lockMgr->isKidMode()) go(ScreenId::KidHome);
+      else go(ScreenId::AdminHome);
+      return;
+
+    case ScreenId::Chat:
+      go(ScreenId::Inbox);
+      return;
+
+    case ScreenId::Unlock:
+      go(ScreenId::KidHome);
+      return;
+
+    case ScreenId::AdminHome:
+      go(ScreenId::KidHome);
+      return;
+  }
+}
+
+void ScreenRouter::uiHome() {
+  go(ScreenId::KidHome);
+}
+
 void ScreenRouter::handleLine(const String& lineIn) {
   if (!ui || !lockMgr) return;
 
   String line = lineIn;
   line.trim();
 
-  // Global navigation (serial)
   if (line == "home")  { go(ScreenId::KidHome); return; }
   if (line == "inbox") { go(ScreenId::Inbox);   return; }
 
@@ -266,7 +330,6 @@ void ScreenRouter::handleLine(const String& lineIn) {
     return;
   }
 
-  // help (serial)
   if (line == "help") {
     ui->line("home/inbox/back");
     ui->line("chat <peer>");
@@ -275,7 +338,6 @@ void ScreenRouter::handleLine(const String& lineIn) {
     return;
   }
 
-  // mc <cmd> passthrough (serial)
   if (line.startsWith("mc ")) {
     String cmd = line.substring(3);
     cmd.trim();
@@ -292,7 +354,6 @@ void ScreenRouter::handleLine(const String& lineIn) {
     return;
   }
 
-  // chat <peer>
   if (line.startsWith("chat ")) {
     activePeer = line.substring(5);
     activePeer.trim();
@@ -301,7 +362,6 @@ void ScreenRouter::handleLine(const String& lineIn) {
     return;
   }
 
-  // send <peer> <msg>
   if (line.startsWith("send ")) {
     String rest = line.substring(5);
     rest.trim();
@@ -324,7 +384,6 @@ void ScreenRouter::handleLine(const String& lineIn) {
     return;
   }
 
-  // rx <peer> <msg> simulate inbound
   if (line.startsWith("rx ")) {
     String rest = line.substring(3);
     rest.trim();
@@ -337,14 +396,12 @@ void ScreenRouter::handleLine(const String& lineIn) {
     if (msgStore) msgStore->add(Message{peer, msg, true, millis()});
     if (meshSvc) meshSvc->injectInbound(peer, msg);
 
-    // refresh if relevant
     if (current == ScreenId::Inbox) render();
     else if (current == ScreenId::Chat && activePeer == peer) render();
     else ui->line("rx ok");
     return;
   }
 
-  // Per-screen serial behavior (keep minimal)
   switch (current) {
     case ScreenId::KidHome:
       if (line == "a") go(ScreenId::Unlock);
@@ -352,7 +409,6 @@ void ScreenRouter::handleLine(const String& lineIn) {
       break;
 
     case ScreenId::Inbox:
-      // typing a peer name opens chat
       activePeer = line;
       activePeer.trim();
       if (activePeer.length() == 0) return;
@@ -360,7 +416,6 @@ void ScreenRouter::handleLine(const String& lineIn) {
       break;
 
     case ScreenId::Chat:
-      // typing sends to active peer
       if (activePeer.length() == 0) { ui->line("chat <peer>"); return; }
       if (meshSvc && msgStore) {
         bool ok = meshSvc->send(activePeer, line);
@@ -407,7 +462,7 @@ void ScreenRouter::renderInbox() {
 
   auto peers = msgStore->peersMostRecentFirst();
   const uint16_t peersCount = (uint16_t)peers.size();
-  const uint16_t totalItems = peersCount + 1; // + Home
+  const uint16_t totalItems = peersCount + 1;
 
   clampListWindow(totalItems, cursor, listTop);
 
@@ -457,13 +512,11 @@ void ScreenRouter::renderChat(const String& peer) {
   if (pages == 0) pages = 1;
   if (page >= pages) page = 0;
 
-  // page 0 = most recent
   int end = (int)total - (int)(page * kChatMsgLinesPerPage);
   int start = end - (int)kChatMsgLinesPerPage;
   if (start < 0) start = 0;
   if (end < 0) end = 0;
 
-  // Print exactly 2 message lines
   for (int i = start; i < end; i++) {
     const auto& m = msgs[i];
     String t = clip(m.text, 18);
@@ -471,14 +524,12 @@ void ScreenRouter::renderChat(const String& peer) {
   }
   if ((end - start) < kChatMsgLinesPerPage) ui->line("");
 
-  // status line (fits in last line)
   ui->line("Pg " + String(page + 1) + "/" + String(pages));
 }
 
 void ScreenRouter::render() {
   if (!ui || !lockMgr) return;
 
-  // Compact 4-line render per screen
   switch (current) {
     case ScreenId::KidHome: {
       ui->clear();
