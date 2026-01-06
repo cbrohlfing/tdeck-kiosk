@@ -3,9 +3,9 @@ What does this PR change and why?
 
 - Feature / Refactor / Fix:
 - Board(s) affected:
-  - Heltec V3
-  - T-Deck (future)
-  - Board-agnostic
+  - [ ] Heltec V3
+  - [ ] T-Deck (future)
+  - [ ] Board-agnostic
 
 ---
 
