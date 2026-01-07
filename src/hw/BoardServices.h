@@ -10,6 +10,10 @@ class BatteryMonitor;
 class PowerButtonHeltecV3;
 #endif
 
+#if defined(HW_TDECK)
+class TDeckTrackball;
+#endif
+
 // Simple POD-style container for "what the board provides".
 // No constructor on purpose -> stays an aggregate and plays nicely with firmware.
 struct BoardServices {
@@ -20,5 +24,9 @@ struct BoardServices {
 #if defined(HW_HELTEC_V3)
   BatteryMonitor* battery = nullptr;
   PowerButtonHeltecV3* powerButton = nullptr;
+#endif
+
+#if defined(HW_TDECK)
+  TDeckTrackball* trackball = nullptr;
 #endif
 };

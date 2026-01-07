@@ -1,6 +1,8 @@
 // /src/hw/BoardFactory.cpp
 #include "BoardFactory.h"
 
+#include "BoardServices.h"   // <-- IMPORTANT: gives us the BoardServices definition
+
 #include "Display.h"
 #include "Input.h"
 #include "SerialDisplay.h"
@@ -12,6 +14,10 @@
   #include "../boards/heltec_v3/OledDisplayHeltecV3.h"
   #include "../boards/heltec_v3/PowerButtonHeltecV3.h"
   #include "MultiDisplay.h"
+#endif
+
+#if defined(HW_TDECK)
+  #include "../boards/tdeck/TDeckTrackball.h"
 #endif
 
 // --- Shared concrete instances (static lifetime) ---
@@ -26,6 +32,10 @@ static PowerButtonHeltecV3 gPowerButton;
 static MultiDisplay gDisplay(&gSerialDisplay, &gOled);
 #else
 static Display& gDisplay = gSerialDisplay;
+#endif
+
+#if defined(HW_TDECK)
+static TDeckTrackball gTrackball;
 #endif
 
 BoardServices BoardFactory::begin() {
@@ -43,6 +53,11 @@ BoardServices BoardFactory::begin() {
   hw.powerButton = &gPowerButton;
 
   if (hw.display) hw.display->line("[boot] BoardFactory: Heltec V3 init ok");
+#elif defined(HW_TDECK)
+  gTrackball.begin(hw.display, hw.uiInput);
+  hw.trackball = &gTrackball;
+
+  if (hw.display) hw.display->line("[boot] BoardFactory: T-Deck init ok");
 #else
   if (hw.display) hw.display->line("[boot] BoardFactory: Serial-only init ok");
 #endif
@@ -54,6 +69,8 @@ void BoardFactory::tick(BoardServices& hw) {
 #if defined(HW_HELTEC_V3)
   if (hw.battery) hw.battery->tick();
   if (hw.powerButton) hw.powerButton->tick();
+#elif defined(HW_TDECK)
+  if (hw.trackball) hw.trackball->tick();
 #else
   (void)hw;
 #endif
