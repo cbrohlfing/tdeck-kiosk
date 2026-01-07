@@ -1,13 +1,11 @@
+// /src/hw/BoardFactory.h
 #pragma once
-#include <Arduino.h>
 
 #include "BoardServices.h"
 
+// Central place to construct/tick the concrete board services (display/input/uiInput/etc)
 class BoardFactory {
 public:
   static BoardServices begin();
-
-  // Board-level periodic work (battery monitor, power button, etc.)
-  // Keeps UiApp board-agnostic.
   static void tick(BoardServices& hw);
 };
