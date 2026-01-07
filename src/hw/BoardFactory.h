@@ -1,9 +1,11 @@
 // /src/hw/BoardFactory.h
 #pragma once
 
-#include "BoardServices.h"   // <-- Required: BoardServices is used by value + by reference
+#include "BoardServices.h"
 
-struct BoardFactory {
+// Central place to construct/tick the concrete board services (display/input/uiInput/etc)
+class BoardFactory {
+public:
   static BoardServices begin();
   static void tick(BoardServices& hw);
 };
