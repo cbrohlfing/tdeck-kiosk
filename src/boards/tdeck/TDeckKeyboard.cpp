@@ -1,12 +1,12 @@
-#include "TDeckPlusKeyboard.h"
+#include "TDeckKeyboard.h"
 
 #include <Arduino.h>
 
 #if !defined(HW_TDECK_PLUS)
 
 // No-op stubs for non T-Deck Plus builds
-void TDeckPlusKeyboard::begin(Display* /*display*/, UiInput* /*uiInput*/) {}
-void TDeckPlusKeyboard::tick() {}
+void TDeckKeyboard::begin(Display* /*display*/, UiInput* /*uiInput*/) {}
+void TDeckKeyboard::tick() {}
 
 #else
 
@@ -21,12 +21,12 @@ static constexpr int kBoardKbdInt    = 46;
 static constexpr uint32_t kRescanMs = 5000;
 static constexpr uint32_t kI2cHz    = 400000;
 
-bool TDeckPlusKeyboard::readActiveLow_(int pin) const {
+bool TDeckKeyboard::readActiveLow_(int pin) const {
   if (pin < 0) return false;
   return digitalRead(pin) == LOW;
 }
 
-void TDeckPlusKeyboard::dumpBytes_(const uint8_t* data, size_t n) const {
+void TDeckKeyboard::dumpBytes_(const uint8_t* data, size_t n) const {
   Serial.print("kbd i2c rx ");
   Serial.print((int)n);
   Serial.print(" bytes: ");
@@ -38,7 +38,7 @@ void TDeckPlusKeyboard::dumpBytes_(const uint8_t* data, size_t n) const {
   Serial.println();
 }
 
-uint8_t TDeckPlusKeyboard::scanForFirstDevice_() {
+uint8_t TDeckKeyboard::scanForFirstDevice_() {
   for (uint8_t addr = 1; addr < 127; addr++) {
     Wire.beginTransmission(addr);
     uint8_t err = Wire.endTransmission();
@@ -53,7 +53,7 @@ uint8_t TDeckPlusKeyboard::scanForFirstDevice_() {
   return 0;
 }
 
-void TDeckPlusKeyboard::ensureI2cAndDetect_() {
+void TDeckKeyboard::ensureI2cAndDetect_() {
   uint32_t now = millis();
   if (kbdAddr_ != 0) return;
   if (lastScanMs_ != 0 && (now - lastScanMs_) < kRescanMs) return;
@@ -61,7 +61,7 @@ void TDeckPlusKeyboard::ensureI2cAndDetect_() {
   kbdAddr_ = scanForFirstDevice_();
 }
 
-void TDeckPlusKeyboard::begin(Display* display, UiInput* uiInput) {
+void TDeckKeyboard::begin(Display* display, UiInput* uiInput) {
   ui_ = display;
   q_ = uiInput;
 
@@ -76,11 +76,11 @@ void TDeckPlusKeyboard::begin(Display* display, UiInput* uiInput) {
   Wire.begin(kBoardI2cSda, kBoardI2cScl);
   Wire.setClock(kI2cHz);
 
-  Serial.println("TDeckPlusKeyboard: begin");
+  Serial.println("TDeckKeyboard: begin");
   ensureI2cAndDetect_();
 }
 
-void TDeckPlusKeyboard::tick() {
+void TDeckKeyboard::tick() {
   ensureI2cAndDetect_();
   if (kbdAddr_ == 0) return;
 

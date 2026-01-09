@@ -10,8 +10,8 @@
 
 // IMPORTANT:
 // PlatformIO compiles everything under /src for each environment.
-// So we must compile to a no-op unless HW_TDECK is defined.
-#if !defined(HW_TDECK)
+// So we must compile to a no-op unless we're building for a T-Deck variant.
+#if !defined(HW_TDECK) && !defined(HW_TDECK_PLUS)
 
 // ---- No-op stubs for non-TDeck builds ----
 void TDeckTrackball::begin(Display* /*display*/, UiInput* /*uiInput*/) {}
@@ -130,4 +130,4 @@ void TDeckTrackball::tick() {
   }
 }
 
-#endif // HW_TDECK
+#endif // HW_TDECK || HW_TDECK_PLUS

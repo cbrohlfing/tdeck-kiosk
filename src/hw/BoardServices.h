@@ -10,8 +10,12 @@ class BatteryMonitor;
 class PowerButtonHeltecV3;
 #endif
 
-#if defined(HW_TDECK)
+#if defined(HW_TDECK) || defined(HW_TDECK_PLUS)
 class TDeckTrackball;
+#endif
+
+#if defined(HW_TDECK_PLUS)
+class TDeckKeyboard;
 #endif
 
 // Simple POD-style container for "what the board provides".
@@ -26,7 +30,11 @@ struct BoardServices {
   PowerButtonHeltecV3* powerButton = nullptr;
 #endif
 
-#if defined(HW_TDECK)
+#if defined(HW_TDECK) || defined(HW_TDECK_PLUS)
   TDeckTrackball* trackball = nullptr;
+#endif
+
+#if defined(HW_TDECK_PLUS)
+  TDeckKeyboard* keyboard = nullptr;
 #endif
 };
