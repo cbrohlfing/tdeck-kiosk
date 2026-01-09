@@ -10,7 +10,7 @@
 
 // IMPORTANT:
 // PlatformIO compiles everything under /src for each environment.
-// So we must compile to a no-op unless we're building for a T-Deck variant.
+// So we must compile to a no-op unless we're building for T-Deck or T-Deck Plus.
 #if !defined(HW_TDECK) && !defined(HW_TDECK_PLUS)
 
 // ---- No-op stubs for non-TDeck builds ----
