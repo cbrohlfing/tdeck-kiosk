@@ -5,7 +5,7 @@
 #include "../../hw/Display.h"
 #include "../../hw/UiInput.h"
 
-// T-Deck Plus keyboard scaffold.
+// T-Deck keyboard scaffold.
 //
 // What it does today (safe without hardware):
 // - Powers on peripherals (BOARD_POWERON)
@@ -17,7 +17,7 @@
 // What we'll do later (once hardware arrives):
 // - Confirm the keyboard's I2C address and packet format
 // - Map keys to UiInputEvent (NavInput) and to text/lines (TextInput)
-class TDeckPlusKeyboard {
+class TDeckKeyboard {
 public:
   void begin(Display* display, UiInput* uiInput);
   void tick();
