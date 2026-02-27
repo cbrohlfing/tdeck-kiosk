@@ -5,8 +5,8 @@ UiApp app;
 
 void setup() {
   Serial.begin(115200);
-  delay(500);
-  Serial.println("T-Deck Kid Mode firmware booting...");
+  delay(2000);                 // <-- change: give USB serial time
+  Serial.println("BOOT: hello from T-Deck");
   app.begin();
 }
 
