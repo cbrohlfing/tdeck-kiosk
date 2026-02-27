@@ -30,6 +30,13 @@ void TDeckTrackball::post_(uint8_t e) {
 }
 
 void TDeckTrackball::begin(Display* display, UiInput* uiInput) {
+
+  // Enable peripheral power (required for trackball/keyboard on many T-Deck builds)
+  constexpr int TDECK_PERIPH_PWR_PIN = 10;
+  pinMode(TDECK_PERIPH_PWR_PIN, OUTPUT);
+  digitalWrite(TDECK_PERIPH_PWR_PIN, HIGH);
+  delay(50);
+
   ui_ = display;
   q_ = uiInput;
 

@@ -20,7 +20,7 @@
   #include "../boards/tdeck/TDeckTrackball.h"
 #endif
 
-#if defined(HW_TDECK_PLUS)
+#if defined(HW_TDECK) || defined(HW_TDECK_PLUS)
   #include "../boards/tdeck/TDeckKeyboard.h"
 #endif
 
@@ -42,7 +42,7 @@ static Display& gDisplay = gSerialDisplay;
 static TDeckTrackball gTrackball;
 #endif
 
-#if defined(HW_TDECK_PLUS)
+#if defined(HW_TDECK) || defined(HW_TDECK_PLUS)
 static TDeckKeyboard gKeyboard;
 #endif
 
@@ -64,7 +64,10 @@ BoardServices BoardFactory::begin() {
 
 #elif defined(HW_TDECK)
   gTrackball.begin(hw.display, hw.uiInput);
+  gKeyboard.begin(hw.display, hw.uiInput);
+
   hw.trackball = &gTrackball;
+  hw.keyboard  = &gKeyboard;
 
   if (hw.display) hw.display->line("[boot] BoardFactory: T-Deck init ok");
 
@@ -91,10 +94,7 @@ void BoardFactory::tick(BoardServices& hw) {
 
 #elif defined(HW_TDECK) || defined(HW_TDECK_PLUS)
   if (hw.trackball) hw.trackball->tick();
-
-  #if defined(HW_TDECK_PLUS)
   if (hw.keyboard) hw.keyboard->tick();
-  #endif
 
 #else
   (void)hw;

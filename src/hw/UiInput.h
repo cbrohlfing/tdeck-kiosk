@@ -1,4 +1,3 @@
-// /src/hw/UiInput.h
 #pragma once
 #include <stdint.h>
 #include "UiInputEvent.h"
@@ -10,7 +9,6 @@ public:
   void post(UiInputEvent e) {
     if (e == UiInputEvent::None) return;
 
-    // If full, drop the oldest (advance tail)
     if (full_) {
       tail_ = (uint8_t)((tail_ + 1) % kCap);
       full_ = false;
@@ -31,10 +29,16 @@ public:
 
   bool empty() const { return (!full_ && head_ == tail_); }
 
+  // ---- Debug helpers ----
+  void setLastKeycode(uint8_t c) { lastKeycode_ = c; }
+  uint8_t lastKeycode() const { return lastKeycode_; }
+
 private:
   static constexpr uint8_t kCap = 8;
   UiInputEvent q_[kCap] = {};
   uint8_t head_ = 0;
   uint8_t tail_ = 0;
   bool full_ = false;
+
+  uint8_t lastKeycode_ = 0;
 };

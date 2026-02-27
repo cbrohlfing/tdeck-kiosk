@@ -14,7 +14,7 @@ class PowerButtonHeltecV3;
 class TDeckTrackball;
 #endif
 
-#if defined(HW_TDECK_PLUS)
+#if defined(HW_TDECK) || defined(HW_TDECK_PLUS)
 class TDeckKeyboard;
 #endif
 
@@ -34,7 +34,7 @@ struct BoardServices {
   TDeckTrackball* trackball = nullptr;
 #endif
 
-#if defined(HW_TDECK_PLUS)
+#if defined(HW_TDECK) || defined(HW_TDECK_PLUS)
   TDeckKeyboard* keyboard = nullptr;
 #endif
 };
