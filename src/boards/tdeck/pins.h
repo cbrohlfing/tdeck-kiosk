@@ -12,10 +12,26 @@ static constexpr int TDECK_TRACKBALL_RIGHT_PIN = 2;
 static constexpr int TDECK_TRACKBALL_DOWN_PIN  = 15;
 static constexpr int TDECK_TRACKBALL_LEFT_PIN  = 1;
 static constexpr int TDECK_TRACKBALL_PRESS_PIN = 0;
+
+static constexpr int TDECK_POWERON_PIN   = 10;
+static constexpr int TDECK_TFT_CS_PIN    = 12;
+static constexpr int TDECK_TFT_DC_PIN    = 11;
+static constexpr int TDECK_TFT_BL_PIN    = 42;
+static constexpr int TDECK_SPI_MOSI_PIN  = 41;
+static constexpr int TDECK_SPI_MISO_PIN  = 38;
+static constexpr int TDECK_SPI_SCK_PIN   = 40;
 #else
 static constexpr int TDECK_TRACKBALL_UP_PIN    = -1;
 static constexpr int TDECK_TRACKBALL_RIGHT_PIN = -1;
 static constexpr int TDECK_TRACKBALL_DOWN_PIN  = -1;
 static constexpr int TDECK_TRACKBALL_LEFT_PIN  = -1;
 static constexpr int TDECK_TRACKBALL_PRESS_PIN = -1;
+
+static constexpr int TDECK_POWERON_PIN   = -1;
+static constexpr int TDECK_TFT_CS_PIN    = -1;
+static constexpr int TDECK_TFT_DC_PIN    = -1;
+static constexpr int TDECK_TFT_BL_PIN    = -1;
+static constexpr int TDECK_SPI_MOSI_PIN  = -1;
+static constexpr int TDECK_SPI_MISO_PIN  = -1;
+static constexpr int TDECK_SPI_SCK_PIN   = -1;
 #endif
